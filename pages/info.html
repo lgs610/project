@@ -1,0 +1,327 @@
+<div id="info">
+	<div class="optionDiv">
+		<select name="categoryId">
+			<!-- 保存栏目信息，追加option节点 -->
+		</select>
+		<button class="btn btn-success btn-sm">新增</button>
+		<button class="btn btn-success btn-sm">批量删除</button>
+	</div>
+	
+	<table class="table table-bordered text-center">
+		<tr>
+			<td>编号</td>
+			<td>文章标题</td>
+			<td>所属栏目</td>
+			<td>排列方式</td>
+			<td>作者</td>
+			<td>发布时间</td>
+			<td>阅读次数</td>
+			<td>操作</td>
+		</tr>
+	</table>
+
+	<div class="modal" id="infoModal">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header text-center">
+					<div class="backDiv">
+						<i class="iconfont icon-zuo"></i>
+						<span>返回</span>
+					</div>
+					<div class="modal-title">
+						发布资讯
+					</div>
+				</div>
+				<div class="modal-body">
+					<form action="" class="form">
+						<div class="form-group">
+							<label for="">标题</label>
+							<input type="text" class="form-control" name="title">
+						</div>
+						<div class="form-group">
+							<label for="">所属栏目</label>
+							<select name="category" class="form-control">
+							</select>
+						</div>
+						<div class="form-group">
+							<label for="">列表样式</label><br>
+							<div class="lsradio">
+								<label for="style-one">
+									<input type="radio" name="liststyle" value="style-one" id="style-one">
+									<div class="imgDiv"><img src="./images/ls1.jpg" alt=""></div>
+								</label>
+								<label for="style-two">
+									<input type="radio" name="liststyle" value="style-two" id="style-two">
+									<div class="imgDiv"><img src="./images/ls2.jpg" alt=""></div>
+								</label>								
+							</div>
+						</div>
+						<!-- <div class="form-group">
+							<label for="">列表缩略图</label>
+							<button>点击上传</button>
+						</div> -->
+						<div class="form-group">
+							<label for="">正文</label>
+							<textarea name="content" cols="30" rows="5" class="form-control"></textarea>
+						</div>
+						<div class="form-group hide">
+							<button type="reset">重置</button>
+						</div>
+					</form>
+				</div>
+				<div class="modal-footer">
+					<span class="messageSpan"></span>
+					<button class="btn btn-success save">发 布</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script>
+	$(function(){
+		// 全局的当前选中的栏目的id
+		var cgId=''; // 当前栏目的id
+		var currentId='';// 当前行的id  用于修改信息
+		var articles=[];// 数据库里的数据信息 res.data.list/res.data
+		var option='新增'; // 用于判断是删除还是修改
+		$('.modal-content').height($(window).height());
+
+		$('button:contains(新增)').click(function(){
+			option='新增';
+			$('.modal-title').html('发布资讯');
+			$('button:contains(重置)').trigger('click');
+			$('.messageSpan').html('');
+			// 查找栏目，追加option
+			addOption(cgId);
+			// $('#infoModal').show();
+		});
+		var info=[];// 存储的是要修改的行的信息
+		// 修改
+		$('#info table').on({
+			click:function(){
+				option='修改';
+				$('.modal-title').html('修改信息');
+				$('.save').html('保 存');
+
+				$('button:contains(重置)').trigger('click');
+				
+				currentId=$(this).closest('tr').find('[type=checkbox]').val();
+				// var title = $(this).closest('tr').find('#titleOne').text();
+				info=articles.filter(function(item){
+					// 注意一定是双等号==才是匹配
+					return item.id==currentId;  
+				})[0];
+				$('input[name=title]').val(info.title);
+				// addOption(cgId);
+				addOption(info.category.id);
+				// if(info.liststyle=='style-one'){
+				// 	$('input[name=liststyle]:first').prop('checked',true);
+				// }else{
+				// 	$('input[name=liststyle]:last').prop('checked',true);
+				// }
+				$('input[name=liststyle]').prop('checked',false);
+				$('input[value='+info.liststyle+']').prop('checked',true);
+
+				$('textarea[name=content]').val(info.content);
+			}
+		},'[title=修改]');
+
+		// 删除
+		$('#info table').on({
+			click:function(){
+				var id=$(this).closest('tr').find('[type=checkbox]').val();
+				var obj={id:id};
+				$.get(baseURL+'/manager/article/deleteArticleById',obj,function(res){
+					if(res.status==200){
+						alert('删除成功');
+						loadData(cgId);
+					}else{
+						alert('删除失败');
+					}
+				});
+			}
+		},'[title=删除]');
+		// 批量删除
+		$('button:contains(批量删除)').click(function(){
+			// 利用.get()方法将map的返回值转化成数组
+			var ids=$('input[type=checkbox]:checked').map(function(index,item){
+				return $(item).val();
+			}).get();
+			var obj={ids:ids.toString()};// 批量删除只接收字符串的数据进行操作
+			$.post(baseURL+'/manager/article/batchDeleteArticle',obj,function(res){
+				if(res.status==200)	{
+					alert('删除成功');
+					loadData();		
+				}else{
+					alert('删除失败');
+					console.log(res.message);
+				}
+			});
+		});
+		// 查找栏目，追加option,设置select的值,显示模态框
+		function addOption(currentId){
+			$('select[name=category]').empty();
+			$.get(baseURL+'/manager/category/findAllCategory',function(res){
+				res.data.forEach(function(item){
+					var $option=$('<option value="'+item.id+'">'+item.name+'</option>');
+					$('select[name=category]').append($option);
+				});
+				// 在for循环结束之后才能设置值
+				$('select[name=category]').val(currentId);
+				$('#infoModal').show();
+			});
+		}
+
+		// 保存
+		$('.save').click(function(){
+			var title=$('input[name=title]').val();
+			var category=$('select[name=category]').val();
+			var liststyle=$('input[name=liststyle]:checked').val();
+			var content=$('textarea[name=content]').val();
+			if(title&&category&&liststyle&&content){
+				var obj={
+					title:title,
+					liststyle:liststyle,
+					categoryId:category,
+					content:content
+				};
+				if(option=="修改"){
+					obj.id=info.id;
+					obj.publishtime=info.publishtime;
+					obj.readtimes=info.readtimes;
+				}
+				$.post(baseURL+'/manager/article/saveOrUpdateArticle',obj,function(res){
+					if(res.status==200){
+						setTimeout(function(){
+							alert('保存成功');
+						},2000);
+						// 新增之后再查找当前栏目下的数据
+						loadData(cgId);
+						$('#infoModal').hide();
+					}else{
+						alert('保存失败');
+						console.log(res.message);
+					}
+				});
+			}else{
+				$('.messageSpan').html('请输入完整信息');
+			}
+		});
+		$('.backDiv').click(function(){
+			$('#infoModal').hide();
+		});
+
+		// 获取所有的栏目信息，并且追加结点到select中
+		var $select=$('.optionDiv select[name=categoryId]');
+		addCategoryId();
+		// 当select发生改变的时候获取对应的栏目的文章信息
+		$select.change(function(){
+			var cateId=$(this).val();
+			cgId=cateId;
+			loadData(cateId);
+		});
+		function addCategoryId(){
+			$select.empty();
+			$.get(baseURL+'/manager/category/findAllCategory',function(res){
+				res.data.forEach(function(item){
+					var $option=$('<option value="'+item.id+'">'+item.name+'</option>');
+					$select.append($option);
+				});
+				cgId=res.data[0].id;
+				loadData($select.val());
+			});
+		}		
+		function loadData(categoryId){
+			var obj={
+				page:0,
+				pageSize:100,
+				categoryId:categoryId
+			};
+			$('#info table tr:not(:first)').remove();
+			$.get(baseURL+'/manager/article/findArticle',obj,function(res){
+				if(res.status==200){				
+					if(res.data){
+						articles=res.data.list;
+					}
+					articles.forEach(function(item,index){
+						var $tr=$(`<tr>
+										<td>
+											<input type="checkbox" value="`+item.id+`">
+										</td>
+										<td id='titleOne'>`+item.title+`</td>
+										<td>`+item.category.name+`</td>
+										<td>`+item.liststyle+`</td>
+										<td>`+(item.author?item.author:'-')+`</td>
+										<td>`+item.publishtime+`</td>
+										<td>`+item.readtimes+`</td>
+										<td>
+											<i class="iconfont icon-edit-1-copy" title="修改"></i>
+											<i class="iconfont icon-shanchu" title="删除"></i>
+										</td>
+									</tr>`);
+						$('#info table').append($tr);
+					});
+				}else{
+					alert('加载失败');
+					console.log(res.message);
+				}
+					
+			});
+		}
+		
+	});
+</script>
+<style>
+	#info{
+		padding: 10px;
+		background-color: #fff;
+	}
+	#info table{
+		margin-top: 10px;
+	}
+	#info table i{
+		color: #63b919;
+		cursor: pointer;
+	}
+	#info table i:nth-child(2){
+		color: red;
+	}
+	.optionDiv{
+		overflow: hidden;
+	}
+	.optionDiv *{
+		float: left;
+		margin-right: 8px;
+	}
+	.optionDiv select{
+		width: 200px;
+		height: 28px;
+	}
+	.modal-dialog{
+		width: 700px;
+		margin-top: 0;
+		margin-right: 0;
+	}
+	.modal-body .imgDiv{
+		width: 300px;
+		height: 120px;
+		border: 1px solid #ccc;
+		border-radius: 5px;
+		line-height: 120px;
+		padding-left: 10px;
+		display: inline-block;
+	}
+	.modal-body img{
+		width: 280px;
+	}
+	.modal-content{
+		overflow: auto;
+	}
+	.backDiv{
+		float: left;
+		cursor: pointer;
+	}
+	.messageSpan{
+		color: red;
+	}
+</style>
