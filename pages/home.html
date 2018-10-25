@@ -342,32 +342,3 @@
 	}
 </style>
 
-
-var chart = Highcharts.chart('container',{
-	chart: {
-		type: 'gauge',
-	},
-	title: {
-		text: ' '
-	},
-	pane: {
-		startAngle: -120,
-		endAngle: 120,
-	},
-	// the value axis
-	yAxis: {
-		min: 0,
-		max: 200,
-		plotBands: [{
-			from: 0,
-			to: 200,
-			color: '#7c31bf' // green
-		}]
-	},
-	series: [{
-		data: [60]
-	}],
-	credits:{
-		enabled:false
-	}
-});
